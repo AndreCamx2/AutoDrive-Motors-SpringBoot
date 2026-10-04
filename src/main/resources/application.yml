@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: autodrive-motors
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/autodrive_db
+    username: postgres
+    password: admin123
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    open-in-view: false
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: America/Bogota
+
+  jackson:
+    time-zone: America/Bogota
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: always
+
+exchange:
+  api:
+    base-url: ${EXCHANGE_API_URL:https://open.er-api.com/v6}
+    latest-path: /latest/{base}
+    base-currency: COP
+    target-currency: USD
+    connect-timeout: 3s
+    read-timeout: 5s
+    fallback-rate: ${EXCHANGE_FALLBACK_RATE:0.000302}
+    cache-ttl: 30m
+
+business:
+  venta:
+    umbral-descuento: 100000000
+    porcentaje-descuento: 5
+
+logging:
+  level:
+    root: INFO
+    com.autodrive.motors: DEBUG
+    org.hibernate.SQL: INFO

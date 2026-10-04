@@ -1,0 +1,93 @@
+@startuml diagrama_secuencia_venta
+title AutoDrive Motors - Secuencia: Registro de Venta
+
+autonumber
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+actor "Asesor" as U
+participant "VentaController" as C
+participant "VentaServiceImpl" as S <<@Transactional>>
+participant "ClienteRepository" as CR
+participant "VehiculoRepository" as VR
+participant "VentaRepository" as SR
+participant "CurrencyExchangeService" as FX
+participant "API Tasa de Cambio" as API <<externo>>
+participant "GlobalExceptionHandler" as EH
+database "PostgreSQL" as DB
+
+U -> C : POST /api/ventas\n{clienteId, vehiculoId, observaciones}
+activate C
+C -> C : @Valid VentaRequestDTO
+
+alt Datos inválidos
+  C --> EH : MethodArgumentNotValidException
+  EH --> U : 400 Bad Request (validationErrors)
+end
+
+C -> S : registrarVenta(request)
+activate S
+
+S -> CR : findById(clienteId)
+CR -> DB : SELECT clientes
+DB --> CR
+alt Cliente no existe
+  S --> EH : ResourceNotFoundException
+  EH --> U : 404 Not Found
+end
+CR --> S : Cliente
+
+S -> VR : findById(vehiculoId)
+VR -> DB : SELECT vehiculos
+DB --> VR
+alt Vehículo no existe
+  S --> EH : ResourceNotFoundException
+  EH --> U : 404 Not Found
+end
+VR --> S : Vehiculo
+
+S -> S : validar estado del vehículo
+alt estado == VENDIDO o EN_MANTENIMIENTO
+  S --> EH : BusinessRuleException("Vehículo no disponible")
+  EH --> U : 422 Unprocessable Entity
+end
+
+S -> S : precioBase = vehiculo.precio
+
+alt precioBase > 100.000.000 COP
+  S -> S : porcentaje = 5%\nmontoDescuento = precioBase * 0.05
+else precioBase <= 100.000.000 COP
+  S -> S : porcentaje = 0%\nmontoDescuento = 0
+end
+
+S -> S : totalPagado = precioBase - montoDescuento
+S -> S : fechaVenta = LocalDateTime.now()
+
+S -> VR : vehiculo.setEstado(VENDIDO)
+note right of VR : Persistido por dirty checking\nal confirmar la transacción
+
+S -> SR : save(venta)
+SR -> DB : INSERT ventas
+DB --> SR
+SR --> S : Venta (id generado)
+
+S -> FX : convertirCopAUsd(totalPagado)
+activate FX
+FX -> API : GET /latest/COP
+alt API disponible
+  API --> FX : { rates: { USD: tasa } }
+else API caída / timeout
+  FX -> FX : usar tasa fallback configurada
+end
+FX --> S : ConversionUsdDTO
+deactivate FX
+
+S -> DB : COMMIT\n(INSERT venta + UPDATE vehiculo.estado)
+S --> C : VentaResponseDTO
+deactivate S
+
+C --> U : 201 Created\nLocation: /api/ventas/{id}
+deactivate C
+
+@enduml
+

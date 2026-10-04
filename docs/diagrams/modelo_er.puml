@@ -1,0 +1,83 @@
+@startuml modelo_er
+title AutoDrive Motors - Modelo Entidad-Relación (PostgreSQL)
+
+hide circle
+skinparam linetype ortho
+skinparam class {
+  BackgroundColor #FDFDFD
+  BorderColor #2B6CB0
+  ArrowColor #2B6CB0
+}
+
+!define PK(x) <b><color:#B8860B><&key> x</color></b>
+!define FK(x) <color:#2B6CB0><&link-intact> x</color>
+!define UK(x) <i><color:#2F855A><&star> x</color></i>
+
+entity "clientes" as clientes {
+  PK(id) : BIGSERIAL
+  --
+  UK(cedula) : VARCHAR(20) NOT NULL
+  nombre : VARCHAR(100) NOT NULL
+  apellido : VARCHAR(100) NOT NULL
+  UK(email) : VARCHAR(150) NOT NULL
+  telefono : VARCHAR(25)
+  direccion : VARCHAR(255)
+  fecha_registro : TIMESTAMP NOT NULL
+}
+
+entity "vehiculos" as vehiculos {
+  PK(id) : BIGSERIAL
+  --
+  UK(placa) : VARCHAR(10) NOT NULL
+  marca : VARCHAR(60) NOT NULL
+  modelo : VARCHAR(60) NOT NULL
+  anio : INTEGER NOT NULL <<CHECK anio >= 1950>>
+  color : VARCHAR(40) NOT NULL
+  precio : NUMERIC(14,2) NOT NULL <<CHECK > 0>>
+  estado : VARCHAR(25) NOT NULL
+  fecha_creacion : TIMESTAMP NOT NULL
+  ..
+  <<CHECK estado IN (DISPONIBLE, VENDIDO, EN_MANTENIMIENTO)>>
+}
+
+entity "ventas" as ventas {
+  PK(id) : BIGSERIAL
+  --
+  FK(cliente_id) : BIGINT NOT NULL
+  FK(vehiculo_id) : BIGINT NOT NULL <<UNIQUE>>
+  fecha_venta : TIMESTAMP NOT NULL
+  precio_base : NUMERIC(14,2) NOT NULL <<CHECK > 0>>
+  porcentaje_descuento : NUMERIC(5,2) NOT NULL DEFAULT 0
+  monto_descuento : NUMERIC(14,2) NOT NULL DEFAULT 0
+  total_pagado : NUMERIC(14,2) NOT NULL <<CHECK > 0>>
+  observaciones : VARCHAR(500)
+}
+
+entity "mantenimientos" as mantenimientos {
+  PK(id) : BIGSERIAL
+  --
+  FK(vehiculo_id) : BIGINT NOT NULL
+  fecha_ingreso : TIMESTAMP NOT NULL
+  fecha_salida : TIMESTAMP
+  tipo : VARCHAR(20) NOT NULL
+  estado : VARCHAR(20) NOT NULL
+  costo : NUMERIC(14,2) NOT NULL <<CHECK >= 0>>
+  descripcion : TEXT NOT NULL
+  ..
+  <<CHECK tipo IN (PREVENTIVO, CORRECTIVO)>>
+  <<CHECK estado IN (EN_PROCESO, FINALIZADO)>>
+}
+
+clientes ||--o{ ventas : "fk_ventas_cliente\nON DELETE RESTRICT"
+vehiculos ||--o| ventas : "fk_ventas_vehiculo\nON DELETE RESTRICT"
+vehiculos ||--o{ mantenimientos : "fk_mant_vehiculo\nON DELETE RESTRICT"
+
+legend right
+  |= Símbolo |= Significado |
+  | <&key> | Llave primaria (PK) |
+  | <&link-intact> | Llave foránea (FK) |
+  | <&star> | Restricción UNIQUE |
+endlegend
+
+@enduml
+

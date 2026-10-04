@@ -1,0 +1,269 @@
+{
+  "info": {
+    "name": "AutoDrive Motors API",
+    "description": "Colección de pruebas para el API de gestión vehicular (Fase 1)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Clientes",
+      "item": [
+        {
+          "name": "Registrar Cliente (Éxito)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/clientes",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["clientes"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cedula\": \"1234567890\",\n  \"nombre\": \"Juan\",\n  \"apellido\": \"Perez\",\n  \"email\": \"juan.perez@email.com\",\n  \"telefono\": \"3001234567\",\n  \"direccion\": \"Calle Falsa 123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Registrar Cliente (Error - Correo duplicado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/clientes",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["clientes"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cedula\": \"0987654321\",\n  \"nombre\": \"Maria\",\n  \"apellido\": \"Gomez\",\n  \"email\": \"juan.perez@email.com\",\n  \"telefono\": \"3007654321\",\n  \"direccion\": \"Carrera 45\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Obtener Todos los Clientes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:8080/clientes",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["clientes"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Vehículos",
+      "item": [
+        {
+          "name": "Registrar Vehículo (Éxito sin descuento)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/vehiculos",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["vehiculos"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"placa\": \"ABC-123\",\n  \"marca\": \"Toyota\",\n  \"modelo\": \"Corolla\",\n  \"anio\": 2022,\n  \"color\": \"Rojo\",\n  \"precio\": 90000000\n}"
+            }
+          }
+        },
+        {
+          "name": "Registrar Vehículo (Éxito CON descuento > 100M)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/vehiculos",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["vehiculos"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"placa\": \"XYZ-987\",\n  \"marca\": \"BMW\",\n  \"modelo\": \"X5\",\n  \"anio\": 2024,\n  \"color\": \"Negro\",\n  \"precio\": 250000000\n}"
+            }
+          }
+        },
+        {
+          "name": "Registrar Vehículo (Error - Precio negativo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/vehiculos",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["vehiculos"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"placa\": \"NEG-000\",\n  \"marca\": \"Kia\",\n  \"modelo\": \"Rio\",\n  \"anio\": 2021,\n  \"color\": \"Blanco\",\n  \"precio\": -5000000\n}"
+            }
+          }
+        },
+        {
+          "name": "Consultar Disponibles",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:8080/vehiculos/disponibles",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["vehiculos", "disponibles"]
+            }
+          }
+        },
+        {
+          "name": "Consultar por Marca",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:8080/vehiculos/marca/Toyota",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["vehiculos", "marca", "Toyota"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Ventas",
+      "item": [
+        {
+          "name": "Registrar Venta (Normal)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/ventas",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["ventas"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteId\": 1,\n  \"vehiculoId\": 1,\n  \"observaciones\": \"Pago en efectivo\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Registrar Venta (Con descuento > 100M)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/ventas",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["ventas"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteId\": 1,\n  \"vehiculoId\": 2,\n  \"observaciones\": \"Aplica descuento automático del 5%\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Registrar Venta (Error - Vehículo no disponible)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/ventas",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["ventas"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteId\": 1,\n  \"vehiculoId\": 1,\n  \"observaciones\": \"Intento de vender un carro ya vendido\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Mantenimientos",
+      "item": [
+        {
+          "name": "Registrar Mantenimiento",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/mantenimientos",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["mantenimientos"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehiculoId\": 2,\n  \"tipo\": \"PREVENTIVO\",\n  \"costo\": 500000,\n  \"descripcion\": \"Cambio de aceite y revisión general\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Registrar Mantenimiento (Error - Vehículo Vendido)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/mantenimientos",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["mantenimientos"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehiculoId\": 1,\n  \"tipo\": \"CORRECTIVO\",\n  \"costo\": 1000000,\n  \"descripcion\": \"Reparación a carro ya vendido (debe fallar)\"\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+

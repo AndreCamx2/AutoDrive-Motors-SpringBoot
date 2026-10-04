@@ -1,0 +1,4 @@
+.section-pane { display: none; }
+.section-pane.active { display: block; }
+.toast-container { position: fixed; top: 20px; right: 20px; z-index: 1055; }
+
