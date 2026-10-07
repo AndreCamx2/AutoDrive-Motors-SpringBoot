@@ -8,5 +8,7 @@ import java.util.List;
 public interface MantenimientoService {
     List<MantenimientoResponseDTO> findAll();
     MantenimientoResponseDTO registrarMantenimiento(MantenimientoRequestDTO dto);
+    void finalizarMantenimiento(Long id);
+    void eliminarMantenimiento(Long id);
 }
 

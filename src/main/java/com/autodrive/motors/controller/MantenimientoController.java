@@ -28,5 +28,17 @@ public class MantenimientoController {
         MantenimientoResponseDTO response = mantenimientoService.registrarMantenimiento(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @PatchMapping("/{id}/finalizar")
+    public ResponseEntity<Void> finalizar(@PathVariable Long id) {
+        mantenimientoService.finalizarMantenimiento(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        mantenimientoService.eliminarMantenimiento(id);
+        return ResponseEntity.noContent().build();
+    }
 }
 

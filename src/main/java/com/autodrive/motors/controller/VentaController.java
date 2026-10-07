@@ -9,6 +9,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.autodrive.motors.service.CurrencyExchangeService;
+import com.autodrive.motors.dto.response.ConversionUsdDTO;
+
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -17,6 +21,12 @@ import java.util.List;
 public class VentaController {
 
     private final VentaService ventaService;
+    private final CurrencyExchangeService currencyExchangeService;
+
+    @GetMapping("/tasa-cambio")
+    public ResponseEntity<ConversionUsdDTO> getTasaCambio() {
+        return ResponseEntity.ok(currencyExchangeService.convertirCopAUsd(BigDecimal.ONE));
+    }
 
     @GetMapping
     public ResponseEntity<List<VentaResponseDTO>> findAll() {

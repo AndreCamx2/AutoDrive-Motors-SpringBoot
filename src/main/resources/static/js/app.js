@@ -14,6 +14,7 @@ function showSection(sectionId) {
     if(sectionId === 'ventas') {
         cargarVentas();
         cargarCombosVenta();
+        cargarTasaCambio();
     }
     if(sectionId === 'mantenimientos') {
         cargarMantenimientos();
@@ -243,19 +244,23 @@ function renderVehiculos() {
         return;
     }
 
-    tbody.innerHTML = lista.map(v => `
+    tbody.innerHTML = lista.map(v => {
+        const num = Number(v.precioCop ?? v.precio ?? 0);
+        const precioTxt = isNaN(num) ? '$ 0' : `$ ${num.toLocaleString('es-CO')}`;
+        return `
         <tr>
             <td>${v.id}</td>
             <td><strong>${escapeHtml(v.placa)}</strong></td>
             <td>${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</td>
             <td>${v.anio}</td>
-            <td>${formatCOP(v.precio)}</td>
+            <td>${precioTxt}</td>
             <td>${badgeEstado(v.estado)}</td>
             <td class="text-end">
                 <button class="btn btn-sm btn-danger" onclick="eliminarVehiculo(${v.id})">Eliminar</button>
             </td>
         </tr>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function onBuscarVehiculo() {
@@ -313,6 +318,20 @@ async function cargarCombosVenta() {
     } catch (e) {}
 }
 
+async function cargarTasaCambio() {
+    try {
+        const data = await fetchAPI('/ventas/tasa-cambio');
+        if (data && data.tasa) {
+            const tasa = Number(data.tasa);
+            const copValue = (1 / tasa).toFixed(2);
+            document.getElementById('tasaCambioBadge').innerHTML = 
+                `1 USD = $${copValue} COP <small class="text-muted ms-1">(${escapeHtml(data.fuente)})</small>`;
+        }
+    } catch (e) {
+        document.getElementById('tasaCambioBadge').innerHTML = 'No disponible';
+    }
+}
+
 async function cargarVentas() {
     try {
         const ventas = await fetchAPI('/ventas');
@@ -321,12 +340,12 @@ async function cargarVentas() {
             <tr>
                 <td>${v.id}</td>
                 <td>${formatFecha(v.fechaVenta)}</td>
-                <td>${escapeHtml(v.cliente.nombre)} ${escapeHtml(v.cliente.apellido)}</td>
-                <td>${escapeHtml(v.vehiculo.placa)}</td>
-                <td>${formatCOP(v.precioBase)}</td>
-                <td>${v.porcentajeDescuento}%</td>
-                <td><strong>${formatCOP(v.totalPagado)}</strong></td>
-                <td class="text-success fw-bold">${v.conversionUsd ? formatUSD(v.conversionUsd.montoUsd) : 'N/A'}</td>
+                <td>${escapeHtml(v.cliente?.nombreCompleto || '')}</td>
+                <td>${escapeHtml(v.vehiculo?.placa || '')}</td>
+                <td>${formatCOP(Number(v.precioBaseCop) || 0)}</td>
+                <td>${Number(v.porcentajeDescuento) || 0}%</td>
+                <td><strong>${formatCOP(Number(v.totalPagadoCop) || 0)}</strong></td>
+                <td class="text-success fw-bold">${v.totalPagadoUsd ? formatUSD(Number(v.totalPagadoUsd)) : 'N/A'} <br><small class="text-muted" style="font-size: 0.75em;">Tasa: ${v.tasaCambioCopUsd || 'N/A'}</small></td>
             </tr>
         `).join('');
     } catch (e) {}
@@ -342,7 +361,7 @@ async function registrarVenta(e) {
     
     try {
         const result = await fetchAPI('/ventas', { method: 'POST', body: JSON.stringify(payload) });
-        showAlert(`Venta registrada exitosamente. Total: ${formatCOP(result.totalPagado)} (${formatUSD(result.conversionUsd.montoUsd)})`);
+        showAlert(`Venta registrada exitosamente. Total: ${formatCOP(Number(result.totalPagadoCop))} (${formatUSD(Number(result.totalPagadoUsd))})`);
         e.target.reset();
         cargarVentas();
         cargarCombosVenta(); // Refrescar combos (el vehículo ya no debe salir)
@@ -350,32 +369,102 @@ async function registrarVenta(e) {
 }
 
 // --- MANTENIMIENTOS ---
+let mantenimientosCache = [];
+
+function badgeEstadoMantenimiento(estado) {
+    if(estado === 'EN_PROCESO') return `<span class="badge bg-warning text-dark">EN PROCESO</span>`;
+    if(estado === 'FINALIZADO') return `<span class="badge bg-success">FINALIZADO</span>`;
+    return `<span class="badge bg-secondary">${escapeHtml(estado)}</span>`;
+}
+
 async function cargarCombosMantenimiento() {
     try {
-        // En mantenimiento sí podríamos querer buscar cualquier vehículo, 
-        // pero por simplicidad listamos todos los que NO estén vendidos
         const vehiculos = await fetchAPI('/vehiculos');
-        const elegibles = vehiculos.filter(v => v.estado !== 'VENDIDO');
+        const elegibles = vehiculos.filter(v => v.estado !== 'EN_MANTENIMIENTO');
         
-        document.getElementById('manVehiculoId').innerHTML = `<option value="">Seleccione Vehículo...</option>` + 
-            elegibles.map(v => `<option value="${v.id}">${escapeHtml(v.placa)} - ${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</option>`).join('');
+        const select = document.getElementById('manVehiculoId');
+        if (elegibles.length === 0) {
+            select.innerHTML = `<option value="">No hay vehículos disponibles para mantenimiento</option>`;
+        } else {
+            select.innerHTML = `<option value="">Seleccione Vehículo...</option>` + 
+                elegibles.map(v => `<option value="${v.id}">${escapeHtml(v.placa)} - ${escapeHtml(v.marca)} ${escapeHtml(v.modelo)} (${escapeHtml(v.estado)})</option>`).join('');
+        }
     } catch (e) {}
 }
 
 async function cargarMantenimientos() {
     try {
-        const mants = await fetchAPI('/mantenimientos');
-        const tbody = document.getElementById('tbodyMantenimientos');
-        tbody.innerHTML = mants.map(m => `
-            <tr>
-                <td>${m.id}</td>
-                <td>${formatFecha(m.fechaIngreso)}</td>
-                <td>${escapeHtml(m.vehiculo.placa)} - ${escapeHtml(m.vehiculo.marca)}</td>
-                <td>${escapeHtml(m.tipo)}</td>
-                <td>${escapeHtml(m.estado)}</td>
-                <td>${formatCOP(m.costo)}</td>
-            </tr>
-        `).join('');
+        mantenimientosCache = await fetchAPI('/mantenimientos') || [];
+        renderMantenimientos();
+    } catch (e) {}
+}
+
+function filtrarMantenimientos() {
+    const q = normalizar(document.getElementById('buscarMantenimiento').value);
+    if (!q) return mantenimientosCache;
+    return mantenimientosCache.filter(m =>
+        normalizar(m.placa).includes(q) ||
+        normalizar(m.estado).includes(q) ||
+        normalizar(m.tipo).includes(q) ||
+        normalizar(m.descripcion).includes(q)
+    );
+}
+
+function renderMantenimientos() {
+    const tbody = document.getElementById('tbodyMantenimientos');
+    const lista = filtrarMantenimientos();
+
+    if (lista.length === 0) {
+        const q = document.getElementById('buscarMantenimiento').value.trim();
+        tbody.innerHTML = filaVacia(7, q ? `Sin resultados para "${q}"` : 'No hay mantenimientos registrados');
+        return;
+    }
+
+    tbody.innerHTML = lista.map(m => {
+        const accionesHtml = m.estado === 'EN_PROCESO'
+            ? `<button class="btn btn-sm btn-success ms-1" onclick="finalizarMantenimiento(${m.id})">Finalizar</button>`
+            : `<span class="badge bg-secondary">Completado</span>`;
+
+        return `
+        <tr>
+            <td>${m.id}</td>
+            <td>${formatFecha(m.fechaIngreso)}<br><small class="text-muted">${m.fechaSalida ? formatFecha(m.fechaSalida) : ''}</small></td>
+            <td><strong>${escapeHtml(m.placa || 'N/A')}</strong></td>
+            <td>${escapeHtml(m.tipo)}<br><small class="text-muted">${escapeHtml(m.descripcion || '')}</small></td>
+            <td>${badgeEstadoMantenimiento(m.estado)}</td>
+            <td>$ ${Number(m.costoCop || 0).toLocaleString('es-CO')}</td>
+            <td class="text-end">
+                ${accionesHtml}
+                <button class="btn btn-sm btn-danger ms-1" onclick="eliminarMantenimiento(${m.id})">Eliminar</button>
+            </td>
+        </tr>
+        `;
+    }).join('');
+}
+
+function onBuscarMantenimiento() {
+    renderMantenimientos();
+}
+
+async function finalizarMantenimiento(id) {
+    if (!confirm('¿Deseas marcar este mantenimiento como finalizado y actualizar el estado del vehículo?')) return;
+    try {
+        await fetchAPI(`/mantenimientos/${id}/finalizar`, { method: 'PATCH' });
+        showAlert('Mantenimiento finalizado con éxito');
+        cargarMantenimientos();
+        cargarCombosMantenimiento();
+        cargarVehiculos();
+    } catch (e) {}
+}
+
+async function eliminarMantenimiento(id) {
+    if (!confirm('¿Seguro que deseas eliminar este registro de mantenimiento?')) return;
+    try {
+        await fetchAPI(`/mantenimientos/${id}`, { method: 'DELETE' });
+        showAlert('Mantenimiento eliminado correctamente');
+        cargarMantenimientos();
+        cargarCombosMantenimiento();
+        cargarVehiculos();
     } catch (e) {}
 }
 
@@ -394,6 +483,7 @@ async function registrarMantenimiento(e) {
         e.target.reset();
         cargarMantenimientos();
         cargarCombosMantenimiento();
+        cargarVehiculos();
     } catch (e) {}
 }
 
