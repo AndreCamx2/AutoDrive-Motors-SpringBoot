@@ -1,0 +1,54 @@
+@startuml casos_de_uso_ventas
+title Módulo Ventas - Casos de uso
+
+left to right direction
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ArrowColor #2B4C7E
+skinparam ActorBorderColor #2B4C7E
+skinparam ActorBackgroundColor #FFFFFF
+skinparam UsecaseBorderColor #2B4C7E
+skinparam UsecaseBackgroundColor #F8F9FA
+skinparam RectangleBorderColor #2B4C7E
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam NoteBorderColor #8A94A6
+skinparam NoteBackgroundColor #F8F9FA
+
+actor "Asesor Comercial" as asesor
+actor "API ExchangeRate" as api
+
+rectangle "AutoDrive Motors - Ventas" {
+  usecase "Registrar venta" as UC_VENTA
+  usecase "Consultar ventas" as UC_LISTAR
+
+  usecase "Validar disponibilidad\nde vehículo" as UC_VALIDAR
+  usecase "Aplicar descuento 5%\n(> 100M COP)" as UC_DESC
+  usecase "Actualizar estado\na VENDIDO" as UC_ESTADO
+  usecase "Convertir total a USD" as UC_USD
+}
+
+asesor --> UC_VENTA
+asesor --> UC_LISTAR
+
+UC_VENTA ..> UC_VALIDAR : <<include>>
+UC_VENTA ..> UC_DESC : <<include>>
+UC_VENTA ..> UC_ESTADO : <<include>>
+UC_VENTA ..> UC_USD : <<include>>
+
+UC_USD --> api
+
+note right of UC_VALIDAR
+  Si el estado es VENDIDO o
+  EN_MANTENIMIENTO, la venta
+  se rechaza (409 Conflict).
+end note
+
+note right of UC_USD
+  Si la API no responde se usa
+  la tasa de respaldo configurada.
+end note
+
+@enduml
+

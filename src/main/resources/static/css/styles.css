@@ -2,3 +2,6 @@
 .section-pane.active { display: block; }
 .toast-container { position: fixed; top: 20px; right: 20px; z-index: 1055; }
 
+/* Buscadores y acciones de tablas */
+.search-box { min-width: 220px; max-width: 360px; }
+td.text-end .btn { white-space: nowrap; }

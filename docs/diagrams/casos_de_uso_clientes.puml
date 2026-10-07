@@ -1,0 +1,45 @@
+@startuml casos_de_uso_clientes
+title Módulo Clientes - Casos de uso
+
+left to right direction
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ArrowColor #2B4C7E
+skinparam ActorBorderColor #2B4C7E
+skinparam ActorBackgroundColor #FFFFFF
+skinparam UsecaseBorderColor #2B4C7E
+skinparam UsecaseBackgroundColor #F8F9FA
+skinparam RectangleBorderColor #2B4C7E
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam NoteBorderColor #8A94A6
+skinparam NoteBackgroundColor #F8F9FA
+
+actor "Asesor Comercial" as asesor
+
+rectangle "AutoDrive Motors - Clientes" {
+  usecase "Registrar cliente" as UC1
+  usecase "Listar clientes" as UC2
+  usecase "Buscar cliente por documento" as UC3
+  usecase "Actualizar datos de cliente" as UC4
+  usecase "Eliminar cliente" as UC5
+}
+
+asesor --> UC1
+asesor --> UC2
+asesor --> UC3
+asesor --> UC4
+asesor --> UC5
+
+note right of UC1
+  La cédula y el correo deben ser únicos.
+  Si ya existen: 409 Conflict.
+end note
+
+note right of UC5
+  Si el cliente tiene ventas asociadas,
+  la llave foránea impide eliminarlo (409).
+end note
+
+@enduml

@@ -1,93 +1,74 @@
 @startuml diagrama_secuencia_venta
-title AutoDrive Motors - Secuencia: Registro de Venta
+title Registro de venta - POST /ventas
 
 autonumber
-skinparam sequenceMessageAlign center
-skinparam responseMessageBelowArrow true
+hide footbox
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ArrowColor #2B4C7E
+skinparam SequenceLifeLineBorderColor #8A94A6
+skinparam ParticipantBorderColor #2B4C7E
+skinparam ParticipantBackgroundColor #F8F9FA
+skinparam ActorBorderColor #2B4C7E
+skinparam ActorBackgroundColor #FFFFFF
+skinparam DatabaseBorderColor #2B4C7E
+skinparam DatabaseBackgroundColor #F8F9FA
+skinparam SequenceGroupBorderColor #8A94A6
+skinparam SequenceGroupBackgroundColor #F8F9FA
+skinparam NoteBorderColor #8A94A6
+skinparam NoteBackgroundColor #FFFFFF
 
-actor "Asesor" as U
-participant "VentaController" as C
-participant "VentaServiceImpl" as S <<@Transactional>>
-participant "ClienteRepository" as CR
-participant "VehiculoRepository" as VR
-participant "VentaRepository" as SR
-participant "CurrencyExchangeService" as FX
-participant "API Tasa de Cambio" as API <<externo>>
-participant "GlobalExceptionHandler" as EH
-database "PostgreSQL" as DB
+actor Usuario
+participant VentaController
+participant VentaService
+database ClienteRepository
+database VehiculoRepository
+database VentaRepository
+participant CurrencyExchangeService
+participant ExchangeRateClient
 
-U -> C : POST /api/ventas\n{clienteId, vehiculoId, observaciones}
-activate C
-C -> C : @Valid VentaRequestDTO
+Usuario -> VentaController : POST /ventas {clienteId, vehiculoId}
+VentaController -> VentaService : registrarVenta(dto)
 
-alt Datos inválidos
-  C --> EH : MethodArgumentNotValidException
-  EH --> U : 400 Bad Request (validationErrors)
+VentaService -> ClienteRepository : findById(clienteId)
+ClienteRepository --> VentaService : cliente
+
+VentaService -> VehiculoRepository : findByIdForUpdate(vehiculoId)
+VehiculoRepository --> VentaService : vehiculo
+
+VentaService -> VentaService : vehiculo.estaDisponibleParaVenta()
+
+alt vehículo no DISPONIBLE (VENDIDO o EN_MANTENIMIENTO)
+  VentaService --> VentaController : BusinessRuleException
+  VentaController --> Usuario : 409 Conflict
+else vehículo DISPONIBLE
+  VentaService -> VentaService : precioBase = vehiculo.precio
+
+  opt precioBase > 100.000.000 COP
+    VentaService -> VentaService : montoDescuento = precioBase * 5%
+  end
+
+  VentaService -> VentaService : totalPagado = precioBase - montoDescuento
+  VentaService -> VentaService : vehiculo.marcarComoVendido()
+  VentaService -> VentaRepository : save(venta)
+  VentaRepository --> VentaService : venta (fechaVenta asignada)
+
+  VentaService -> CurrencyExchangeService : convertirCopAUsd(totalPagado)
+  opt tasa no disponible en caché
+    CurrencyExchangeService -> ExchangeRateClient : getLatestRates()
+    ExchangeRateClient --> CurrencyExchangeService : tasa COP -> USD
+  end
+  CurrencyExchangeService --> VentaService : ConversionUsdDTO
+
+  VentaService --> VentaController : VentaResponseDTO
+  VentaController --> Usuario : 201 Created
 end
 
-C -> S : registrarVenta(request)
-activate S
-
-S -> CR : findById(clienteId)
-CR -> DB : SELECT clientes
-DB --> CR
-alt Cliente no existe
-  S --> EH : ResourceNotFoundException
-  EH --> U : 404 Not Found
-end
-CR --> S : Cliente
-
-S -> VR : findById(vehiculoId)
-VR -> DB : SELECT vehiculos
-DB --> VR
-alt Vehículo no existe
-  S --> EH : ResourceNotFoundException
-  EH --> U : 404 Not Found
-end
-VR --> S : Vehiculo
-
-S -> S : validar estado del vehículo
-alt estado == VENDIDO o EN_MANTENIMIENTO
-  S --> EH : BusinessRuleException("Vehículo no disponible")
-  EH --> U : 422 Unprocessable Entity
-end
-
-S -> S : precioBase = vehiculo.precio
-
-alt precioBase > 100.000.000 COP
-  S -> S : porcentaje = 5%\nmontoDescuento = precioBase * 0.05
-else precioBase <= 100.000.000 COP
-  S -> S : porcentaje = 0%\nmontoDescuento = 0
-end
-
-S -> S : totalPagado = precioBase - montoDescuento
-S -> S : fechaVenta = LocalDateTime.now()
-
-S -> VR : vehiculo.setEstado(VENDIDO)
-note right of VR : Persistido por dirty checking\nal confirmar la transacción
-
-S -> SR : save(venta)
-SR -> DB : INSERT ventas
-DB --> SR
-SR --> S : Venta (id generado)
-
-S -> FX : convertirCopAUsd(totalPagado)
-activate FX
-FX -> API : GET /latest/COP
-alt API disponible
-  API --> FX : { rates: { USD: tasa } }
-else API caída / timeout
-  FX -> FX : usar tasa fallback configurada
-end
-FX --> S : ConversionUsdDTO
-deactivate FX
-
-S -> DB : COMMIT\n(INSERT venta + UPDATE vehiculo.estado)
-S --> C : VentaResponseDTO
-deactivate S
-
-C --> U : 201 Created\nLocation: /api/ventas/{id}
-deactivate C
+note over VentaController, VentaRepository
+  Si el cliente o el vehículo no existen
+  se lanza ResourceNotFoundException (404).
+end note
 
 @enduml
-

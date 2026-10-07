@@ -1,0 +1,44 @@
+@startuml casos_de_uso_mantenimiento
+title Módulo Mantenimiento - Casos de uso
+
+left to right direction
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ArrowColor #2B4C7E
+skinparam ActorBorderColor #2B4C7E
+skinparam ActorBackgroundColor #FFFFFF
+skinparam UsecaseBorderColor #2B4C7E
+skinparam UsecaseBackgroundColor #F8F9FA
+skinparam RectangleBorderColor #2B4C7E
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam NoteBorderColor #8A94A6
+skinparam NoteBackgroundColor #F8F9FA
+
+actor "Asesor Comercial" as asesor
+
+rectangle "AutoDrive Motors - Mantenimiento" {
+  usecase "Registrar ingreso\na mantenimiento" as UC_REG
+  usecase "Consultar historial\nde mantenimiento" as UC_HIST
+  usecase "Actualizar estado\na EN_MANTENIMIENTO" as UC_ESTADO
+}
+
+asesor --> UC_REG
+asesor --> UC_HIST
+
+UC_REG ..> UC_ESTADO : <<include>>
+
+note right of UC_REG
+  No se permite registrar mantenimiento
+  a un vehículo VENDIDO (409 Conflict).
+  Tipo: PREVENTIVO, CORRECTIVO o REVISION.
+end note
+
+note right of UC_HIST
+  Ordenado por fecha de
+  ingreso descendente.
+end note
+
+@enduml
+

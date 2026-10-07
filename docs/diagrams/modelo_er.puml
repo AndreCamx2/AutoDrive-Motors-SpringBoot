@@ -1,83 +1,75 @@
 @startuml modelo_er
-title AutoDrive Motors - Modelo Entidad-Relación (PostgreSQL)
+title AutoDrive Motors - Modelo entidad-relación (PostgreSQL)
 
-hide circle
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
 skinparam linetype ortho
-skinparam class {
-  BackgroundColor #FDFDFD
-  BorderColor #2B6CB0
-  ArrowColor #2B6CB0
-}
-
-!define PK(x) <b><color:#B8860B><&key> x</color></b>
-!define FK(x) <color:#2B6CB0><&link-intact> x</color>
-!define UK(x) <i><color:#2F855A><&star> x</color></i>
+skinparam ArrowColor #2B4C7E
+skinparam ClassBorderColor #2B4C7E
+skinparam ClassBackgroundColor #FFFFFF
+skinparam ClassHeaderBackgroundColor #F8F9FA
+skinparam NoteBorderColor #8A94A6
+skinparam NoteBackgroundColor #F8F9FA
+hide circle
 
 entity "clientes" as clientes {
-  PK(id) : BIGSERIAL
+  * id : BIGINT <<PK>>
   --
-  UK(cedula) : VARCHAR(20) NOT NULL
-  nombre : VARCHAR(100) NOT NULL
-  apellido : VARCHAR(100) NOT NULL
-  UK(email) : VARCHAR(150) NOT NULL
+  * cedula : VARCHAR(20) <<UK>>
+  * nombre : VARCHAR(100)
+  * apellido : VARCHAR(100)
+  * email : VARCHAR(150) <<UK>>
   telefono : VARCHAR(25)
   direccion : VARCHAR(255)
-  fecha_registro : TIMESTAMP NOT NULL
+  * fecha_registro : TIMESTAMP
 }
 
 entity "vehiculos" as vehiculos {
-  PK(id) : BIGSERIAL
+  * id : BIGINT <<PK>>
   --
-  UK(placa) : VARCHAR(10) NOT NULL
-  marca : VARCHAR(60) NOT NULL
-  modelo : VARCHAR(60) NOT NULL
-  anio : INTEGER NOT NULL <<CHECK anio >= 1950>>
-  color : VARCHAR(40) NOT NULL
-  precio : NUMERIC(14,2) NOT NULL <<CHECK > 0>>
-  estado : VARCHAR(25) NOT NULL
-  fecha_creacion : TIMESTAMP NOT NULL
-  ..
-  <<CHECK estado IN (DISPONIBLE, VENDIDO, EN_MANTENIMIENTO)>>
+  * placa : VARCHAR(10) <<UK>>
+  * marca : VARCHAR(60)
+  * modelo : VARCHAR(60)
+  * anio : INTEGER
+  * color : VARCHAR(40)
+  * precio : NUMERIC(14,2)
+  * estado : VARCHAR(25)
+  * fecha_creacion : TIMESTAMP
 }
 
 entity "ventas" as ventas {
-  PK(id) : BIGSERIAL
+  * id : BIGINT <<PK>>
   --
-  FK(cliente_id) : BIGINT NOT NULL
-  FK(vehiculo_id) : BIGINT NOT NULL <<UNIQUE>>
-  fecha_venta : TIMESTAMP NOT NULL
-  precio_base : NUMERIC(14,2) NOT NULL <<CHECK > 0>>
-  porcentaje_descuento : NUMERIC(5,2) NOT NULL DEFAULT 0
-  monto_descuento : NUMERIC(14,2) NOT NULL DEFAULT 0
-  total_pagado : NUMERIC(14,2) NOT NULL <<CHECK > 0>>
-  observaciones : VARCHAR(500)
+  * cliente_id : BIGINT <<FK>>
+  * vehiculo_id : BIGINT <<FK>> <<UK>>
+  * fecha_venta : TIMESTAMP
+  * precio_base : NUMERIC(14,2)
+  porcentaje_descuento : NUMERIC(5,2)
+  * monto_descuento : NUMERIC(14,2)
+  * total_pagado : NUMERIC(14,2)
+  observaciones : TEXT
 }
 
 entity "mantenimientos" as mantenimientos {
-  PK(id) : BIGSERIAL
+  * id : BIGINT <<PK>>
   --
-  FK(vehiculo_id) : BIGINT NOT NULL
-  fecha_ingreso : TIMESTAMP NOT NULL
+  * vehiculo_id : BIGINT <<FK>>
+  * fecha_ingreso : TIMESTAMP
   fecha_salida : TIMESTAMP
-  tipo : VARCHAR(20) NOT NULL
-  estado : VARCHAR(20) NOT NULL
-  costo : NUMERIC(14,2) NOT NULL <<CHECK >= 0>>
-  descripcion : TEXT NOT NULL
-  ..
-  <<CHECK tipo IN (PREVENTIVO, CORRECTIVO)>>
-  <<CHECK estado IN (EN_PROCESO, FINALIZADO)>>
+  * tipo : VARCHAR(20)
+  * estado : VARCHAR(20)
+  * costo : NUMERIC(14,2)
+  * descripcion : TEXT
 }
 
-clientes ||--o{ ventas : "fk_ventas_cliente\nON DELETE RESTRICT"
-vehiculos ||--o| ventas : "fk_ventas_vehiculo\nON DELETE RESTRICT"
-vehiculos ||--o{ mantenimientos : "fk_mant_vehiculo\nON DELETE RESTRICT"
+clientes ||--o{ ventas : fk_ventas_cliente
+vehiculos ||--o| ventas : fk_ventas_vehiculo
+vehiculos ||--o{ mantenimientos : fk_mantenimientos_vehiculo
 
-legend right
-  |= Símbolo |= Significado |
-  | <&key> | Llave primaria (PK) |
-  | <&link-intact> | Llave foránea (FK) |
-  | <&star> | Restricción UNIQUE |
-endlegend
+note bottom of vehiculos
+  estado: DISPONIBLE | VENDIDO | EN_MANTENIMIENTO
+end note
 
 @enduml
-

@@ -79,13 +79,18 @@
                     <div class="card shadow-sm">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span>Lista de Clientes</span>
-                            <button class="btn btn-sm btn-outline-secondary" onclick="cargarClientes()"><i class="bi bi-arrow-clockwise"></i></button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="cargarClientes()" title="Recargar"><i class="bi bi-arrow-clockwise"></i></button>
                         </div>
                         <div class="card-body table-responsive">
+                            <div class="input-group input-group-sm mb-3">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="search" id="buscarCliente" class="form-control"
+                                       placeholder="Buscar por cédula o nombre..." oninput="onBuscarCliente()">
+                            </div>
                             <table class="table table-hover align-middle">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>ID</th><th>Cédula</th><th>Nombre Completo</th><th>Email</th><th>Teléfono</th>
+                                        <th>ID</th><th>Cédula</th><th>Nombre Completo</th><th>Email</th><th>Teléfono</th><th class="text-end">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tbodyClientes"></tbody>
@@ -140,19 +145,26 @@
                     <div class="card shadow-sm">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span>Lista de Vehículos</span>
-                            <div>
-                                <div class="form-check form-switch d-inline-block me-3">
-                                    <input class="form-check-input" type="checkbox" id="chkDisponibles" onchange="cargarVehiculos()">
-                                    <label class="form-check-label">Solo Disponibles</label>
-                                </div>
-                                <button class="btn btn-sm btn-outline-secondary" onclick="cargarVehiculos()"><i class="bi bi-arrow-clockwise"></i></button>
-                            </div>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="cargarVehiculos()" title="Recargar"><i class="bi bi-arrow-clockwise"></i></button>
                         </div>
                         <div class="card-body table-responsive">
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Filtro de estado">
+                                    <input type="radio" class="btn-check" name="filtroVehiculos" id="filtroTodos" value="todos" checked onchange="cargarVehiculos()">
+                                    <label class="btn btn-outline-secondary" for="filtroTodos">Todos</label>
+                                    <input type="radio" class="btn-check" name="filtroVehiculos" id="filtroDisponibles" value="disponibles" onchange="cargarVehiculos()">
+                                    <label class="btn btn-outline-secondary" for="filtroDisponibles">Solo Disponibles</label>
+                                </div>
+                                <div class="input-group input-group-sm flex-grow-1 search-box">
+                                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                    <input type="search" id="buscarVehiculo" class="form-control"
+                                           placeholder="Buscar por marca o modelo..." oninput="onBuscarVehiculo()">
+                                </div>
+                            </div>
                             <table class="table table-hover align-middle">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>ID</th><th>Placa</th><th>Vehículo</th><th>Año</th><th>Precio COP</th><th>Estado</th>
+                                        <th>ID</th><th>Placa</th><th>Vehículo</th><th>Año</th><th>Precio COP</th><th>Estado</th><th class="text-end">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tbodyVehiculos"></tbody>

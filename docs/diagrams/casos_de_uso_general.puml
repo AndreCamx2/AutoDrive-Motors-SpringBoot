@@ -1,0 +1,53 @@
+@startuml casos_de_uso_general
+title AutoDrive Motors - Casos de uso (vista general)
+
+left to right direction
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ArrowColor #2B4C7E
+skinparam ActorBorderColor #2B4C7E
+skinparam ActorBackgroundColor #FFFFFF
+skinparam UsecaseBorderColor #2B4C7E
+skinparam UsecaseBackgroundColor #F8F9FA
+skinparam RectangleBorderColor #2B4C7E
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam PackageBorderColor #8A94A6
+skinparam PackageBackgroundColor #FFFFFF
+
+actor "Asesor Comercial" as asesor
+actor "API ExchangeRate" as api
+
+rectangle "AutoDrive Motors" {
+
+  package "Clientes" {
+    usecase "Gestionar clientes" as UC_CLI
+  }
+
+  package "Vehículos" {
+    usecase "Gestionar inventario\nde vehículos" as UC_VEH
+  }
+
+  package "Ventas" {
+    usecase "Registrar venta" as UC_VEN
+    usecase "Consultar ventas" as UC_VEN_LIST
+  }
+
+  package "Mantenimiento" {
+    usecase "Registrar ingreso\na mantenimiento" as UC_MAN
+    usecase "Consultar historial\nde mantenimiento" as UC_MAN_LIST
+  }
+}
+
+asesor --> UC_CLI
+asesor --> UC_VEH
+asesor --> UC_VEN
+asesor --> UC_VEN_LIST
+asesor --> UC_MAN
+asesor --> UC_MAN_LIST
+
+UC_VEN --> api
+
+@enduml
+

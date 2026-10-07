@@ -21,28 +21,46 @@ function showSection(sectionId) {
     }
 }
 
-// Alertas UI
+// Escapa texto antes de insertarlo con innerHTML
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// Alertas UI (success | error | warning | info)
+const TOAST_STYLES = {
+    success: { bg: 'bg-success',   text: 'text-white', icon: 'bi-check-circle' },
+    error:   { bg: 'bg-danger',    text: 'text-white', icon: 'bi-x-circle' },
+    warning: { bg: 'bg-warning',   text: 'text-dark',  icon: 'bi-exclamation-triangle' },
+    info:    { bg: 'bg-secondary', text: 'text-white', icon: 'bi-info-circle' }
+};
+
 function showAlert(message, type = 'success') {
     const toastContainer = document.getElementById('toastContainer');
-    const bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
-    
+    const style = TOAST_STYLES[type] || TOAST_STYLES.error;
+    const closeClass = style.text === 'text-white' ? 'btn-close-white' : '';
+
     const toast = document.createElement('div');
-    toast.className = `toast align-items-center text-white border-0 mb-2 ${bgClass}`;
+    toast.className = `toast align-items-center border-0 mb-2 ${style.bg} ${style.text}`;
     toast.setAttribute('role', 'alert');
     toast.setAttribute('aria-live', 'assertive');
     toast.setAttribute('aria-atomic', 'true');
-    
+
     toast.innerHTML = `
         <div class="d-flex">
-            <div class="toast-body">${message}</div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            <div class="toast-body"><i class="bi ${style.icon} me-1"></i>${escapeHtml(message)}</div>
+            <button type="button" class="btn-close ${closeClass} me-2 m-auto" data-bs-dismiss="toast"></button>
         </div>
     `;
     toastContainer.appendChild(toast);
-    
-    const bsToast = new bootstrap.Toast(toast, { delay: 4000 });
+
+    const bsToast = new bootstrap.Toast(toast, { delay: 3500 });
     bsToast.show();
-    
+
     toast.addEventListener('hidden.bs.toast', () => toast.remove());
 }
 
@@ -55,21 +73,26 @@ async function fetchAPI(url, options = {}) {
                 ...options.headers
             }
         });
-        
+
         if (response.status === 204) return null;
-        
-        const data = await response.json();
-        
+
+        const text = await response.text();
+        let data = null;
+        try { data = text ? JSON.parse(text) : null; } catch (_) { /* cuerpo no JSON */ }
+
         if (!response.ok) {
-            let errorMsg = data.message || 'Error en la petición';
-            if (data.validationErrors) {
+            let errorMsg = (data && data.message) || `Error ${response.status} en la petición`;
+            if (data && data.validationErrors) {
                 errorMsg = Object.values(data.validationErrors).join(' - ');
             }
             throw new Error(errorMsg);
         }
         return data;
     } catch (error) {
-        showAlert(error.message, 'error');
+        const msg = error instanceof TypeError
+            ? 'No se pudo conectar con el servidor'
+            : error.message;
+        showAlert(msg, 'error');
         throw error;
     }
 }
@@ -79,21 +102,80 @@ const formatCOP = (num) => new Intl.NumberFormat('es-CO', { style: 'currency', c
 const formatUSD = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
 const formatFecha = (fecha) => new Date(fecha).toLocaleString('es-CO');
 
+// Normaliza texto para búsquedas (sin tildes, minúsculas)
+const normalizar = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+// Ejecuta fn tras una pausa en la escritura
+function debounce(fn, ms = 400) {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+function filaVacia(colspan, mensaje) {
+    return `<tr><td colspan="${colspan}" class="text-center text-muted py-4">${escapeHtml(mensaje)}</td></tr>`;
+}
+
 // --- CLIENTES ---
+let clientesCache = [];
+
 async function cargarClientes() {
     try {
-        const clientes = await fetchAPI('/clientes');
-        const tbody = document.getElementById('tbodyClientes');
-        tbody.innerHTML = clientes.map(c => `
-            <tr>
-                <td>${c.id}</td>
-                <td>${c.cedula}</td>
-                <td>${c.nombre} ${c.apellido}</td>
-                <td>${c.email}</td>
-                <td>${c.telefono}</td>
-            </tr>
-        `).join('');
+        clientesCache = await fetchAPI('/clientes') || [];
+        renderClientes();
     } catch (e) {}
+}
+
+function filtrarClientes() {
+    const q = normalizar(document.getElementById('buscarCliente').value);
+    if (!q) return clientesCache;
+    return clientesCache.filter(c =>
+        normalizar(c.cedula).includes(q) ||
+        normalizar(`${c.nombre} ${c.apellido}`).includes(q)
+    );
+}
+
+function renderClientes() {
+    const tbody = document.getElementById('tbodyClientes');
+    const lista = filtrarClientes();
+
+    if (lista.length === 0) {
+        const q = document.getElementById('buscarCliente').value.trim();
+        tbody.innerHTML = filaVacia(6, q ? `Sin resultados para "${q}"` : 'No hay clientes registrados');
+        return;
+    }
+
+    tbody.innerHTML = lista.map(c => `
+        <tr>
+            <td>${c.id}</td>
+            <td>${escapeHtml(c.cedula)}</td>
+            <td>${escapeHtml(c.nombre)} ${escapeHtml(c.apellido)}</td>
+            <td>${escapeHtml(c.email)}</td>
+            <td>${escapeHtml(c.telefono)}</td>
+            <td class="text-end">
+                <button class="btn btn-sm btn-danger" onclick="eliminarCliente(${c.id})">Eliminar</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function onBuscarCliente() {
+    renderClientes();
+}
+
+async function eliminarCliente(id) {
+    if (!confirm('¿Deseas eliminar este cliente?')) return;
+
+    try {
+        const response = await fetch(API_BASE + '/clientes/' + id, { method: 'DELETE' });
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.message || 'Error al eliminar el cliente');
+        }
+        showAlert('Cliente eliminado correctamente');
+        cargarClientes();
+    } catch (e) {
+        alert(e.message);
+    }
 }
 
 async function registrarCliente(e) {
@@ -116,30 +198,84 @@ async function registrarCliente(e) {
 }
 
 // --- VEHÍCULOS ---
+let vehiculosCache = [];
+
 function badgeEstado(estado) {
     if(estado === 'DISPONIBLE') return `<span class="badge bg-success">DISPONIBLE</span>`;
     if(estado === 'VENDIDO') return `<span class="badge bg-secondary">VENDIDO</span>`;
     if(estado === 'EN_MANTENIMIENTO') return `<span class="badge bg-warning text-dark">MANTENIMIENTO</span>`;
-    return `<span class="badge bg-light text-dark">${estado}</span>`;
+    return `<span class="badge bg-light text-dark">${escapeHtml(estado)}</span>`;
+}
+
+function filtroEstadoVehiculos() {
+    const sel = document.querySelector('input[name="filtroVehiculos"]:checked');
+    return sel ? sel.value : 'todos';
 }
 
 async function cargarVehiculos() {
-    const soloDisponibles = document.getElementById('chkDisponibles').checked;
-    const url = soloDisponibles ? '/vehiculos/disponibles' : '/vehiculos';
+    const url = filtroEstadoVehiculos() === 'disponibles' ? '/vehiculos/disponibles' : '/vehiculos';
     try {
-        const vehiculos = await fetchAPI(url);
-        const tbody = document.getElementById('tbodyVehiculos');
-        tbody.innerHTML = vehiculos.map(v => `
-            <tr>
-                <td>${v.id}</td>
-                <td><strong>${v.placa}</strong></td>
-                <td>${v.marca} ${v.modelo}</td>
-                <td>${v.anio}</td>
-                <td>${formatCOP(v.precio)}</td>
-                <td>${badgeEstado(v.estado)}</td>
-            </tr>
-        `).join('');
+        vehiculosCache = await fetchAPI(url) || [];
+        renderVehiculos();
     } catch (e) {}
+}
+
+function filtrarVehiculos() {
+    const q = normalizar(document.getElementById('buscarVehiculo').value);
+    if (!q) return vehiculosCache;
+    return vehiculosCache.filter(v =>
+        normalizar(v.marca).includes(q) ||
+        normalizar(v.modelo).includes(q) ||
+        normalizar(`${v.marca} ${v.modelo}`).includes(q)
+    );
+}
+
+function renderVehiculos() {
+    const tbody = document.getElementById('tbodyVehiculos');
+    const lista = filtrarVehiculos();
+
+    if (lista.length === 0) {
+        const q = document.getElementById('buscarVehiculo').value.trim();
+        const msg = q
+            ? `Sin resultados para "${q}"`
+            : (filtroEstadoVehiculos() === 'disponibles' ? 'No hay vehículos disponibles' : 'No hay vehículos registrados');
+        tbody.innerHTML = filaVacia(7, msg);
+        return;
+    }
+
+    tbody.innerHTML = lista.map(v => `
+        <tr>
+            <td>${v.id}</td>
+            <td><strong>${escapeHtml(v.placa)}</strong></td>
+            <td>${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</td>
+            <td>${v.anio}</td>
+            <td>${formatCOP(v.precio)}</td>
+            <td>${badgeEstado(v.estado)}</td>
+            <td class="text-end">
+                <button class="btn btn-sm btn-danger" onclick="eliminarVehiculo(${v.id})">Eliminar</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function onBuscarVehiculo() {
+    renderVehiculos();
+}
+
+async function eliminarVehiculo(id) {
+    if (!confirm('¿Deseas eliminar este vehículo?')) return;
+
+    try {
+        const response = await fetch(API_BASE + '/vehiculos/' + id, { method: 'DELETE' });
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.message || 'Error al eliminar el vehículo');
+        }
+        showAlert('Vehículo eliminado correctamente');
+        cargarVehiculos();
+    } catch (e) {
+        alert(e.message);
+    }
 }
 
 async function registrarVehiculo(e) {
@@ -170,10 +306,10 @@ async function cargarCombosVenta() {
         ]);
         
         document.getElementById('venClienteId').innerHTML = `<option value="">Seleccione Cliente...</option>` + 
-            clientes.map(c => `<option value="${c.id}">${c.cedula} - ${c.nombre} ${c.apellido}</option>`).join('');
+            clientes.map(c => `<option value="${c.id}">${escapeHtml(c.cedula)} - ${escapeHtml(c.nombre)} ${escapeHtml(c.apellido)}</option>`).join('');
             
         document.getElementById('venVehiculoId').innerHTML = `<option value="">Seleccione Vehículo...</option>` + 
-            vehiculos.map(v => `<option value="${v.id}">${v.placa} - ${v.marca} ${v.modelo} (${formatCOP(v.precio)})</option>`).join('');
+            vehiculos.map(v => `<option value="${v.id}">${escapeHtml(v.placa)} - ${escapeHtml(v.marca)} ${escapeHtml(v.modelo)} (${formatCOP(v.precio)})</option>`).join('');
     } catch (e) {}
 }
 
@@ -185,8 +321,8 @@ async function cargarVentas() {
             <tr>
                 <td>${v.id}</td>
                 <td>${formatFecha(v.fechaVenta)}</td>
-                <td>${v.cliente.nombre} ${v.cliente.apellido}</td>
-                <td>${v.vehiculo.placa}</td>
+                <td>${escapeHtml(v.cliente.nombre)} ${escapeHtml(v.cliente.apellido)}</td>
+                <td>${escapeHtml(v.vehiculo.placa)}</td>
                 <td>${formatCOP(v.precioBase)}</td>
                 <td>${v.porcentajeDescuento}%</td>
                 <td><strong>${formatCOP(v.totalPagado)}</strong></td>
@@ -222,7 +358,7 @@ async function cargarCombosMantenimiento() {
         const elegibles = vehiculos.filter(v => v.estado !== 'VENDIDO');
         
         document.getElementById('manVehiculoId').innerHTML = `<option value="">Seleccione Vehículo...</option>` + 
-            elegibles.map(v => `<option value="${v.id}">${v.placa} - ${v.marca} ${v.modelo}</option>`).join('');
+            elegibles.map(v => `<option value="${v.id}">${escapeHtml(v.placa)} - ${escapeHtml(v.marca)} ${escapeHtml(v.modelo)}</option>`).join('');
     } catch (e) {}
 }
 
@@ -234,9 +370,9 @@ async function cargarMantenimientos() {
             <tr>
                 <td>${m.id}</td>
                 <td>${formatFecha(m.fechaIngreso)}</td>
-                <td>${m.vehiculo.placa} - ${m.vehiculo.marca}</td>
-                <td>${m.tipo}</td>
-                <td>${m.estado}</td>
+                <td>${escapeHtml(m.vehiculo.placa)} - ${escapeHtml(m.vehiculo.marca)}</td>
+                <td>${escapeHtml(m.tipo)}</td>
+                <td>${escapeHtml(m.estado)}</td>
                 <td>${formatCOP(m.costo)}</td>
             </tr>
         `).join('');

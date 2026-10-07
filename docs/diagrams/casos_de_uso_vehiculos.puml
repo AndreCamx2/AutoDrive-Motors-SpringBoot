@@ -1,0 +1,50 @@
+@startuml casos_de_uso_vehiculos
+title Módulo Vehículos - Casos de uso
+
+left to right direction
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ArrowColor #2B4C7E
+skinparam ActorBorderColor #2B4C7E
+skinparam ActorBackgroundColor #FFFFFF
+skinparam UsecaseBorderColor #2B4C7E
+skinparam UsecaseBackgroundColor #F8F9FA
+skinparam RectangleBorderColor #2B4C7E
+skinparam RectangleBackgroundColor #FFFFFF
+skinparam NoteBorderColor #8A94A6
+skinparam NoteBackgroundColor #F8F9FA
+
+actor "Asesor Comercial" as asesor
+
+rectangle "AutoDrive Motors - Vehículos" {
+  usecase "Registrar vehículo" as UC1
+  usecase "Consultar inventario total" as UC2
+  usecase "Consultar vehículos disponibles" as UC3
+  usecase "Filtrar por marca" as UC4
+  usecase "Modificar datos" as UC5
+  usecase "Eliminar vehículo" as UC6
+}
+
+asesor --> UC1
+asesor --> UC2
+asesor --> UC3
+asesor --> UC4
+asesor --> UC5
+asesor --> UC6
+
+note right of UC1
+  La placa es única (se normaliza a
+  mayúsculas sin espacios ni guiones).
+  El precio en COP debe ser positivo.
+  Estado inicial: DISPONIBLE.
+end note
+
+note right of UC3
+  Solo vehículos con
+  estado = DISPONIBLE.
+end note
+
+@enduml
+

@@ -1,250 +1,94 @@
 @startuml diagrama_clases
-title AutoDrive Motors - Diagrama de Clases (Dominio y Arquitectura)
+title AutoDrive Motors - Modelo de dominio
 
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
 skinparam classAttributeIconSize 0
-skinparam packageStyle rectangle
-skinparam linetype ortho
-hide empty members
+skinparam ArrowColor #2B4C7E
+skinparam ClassBorderColor #2B4C7E
+skinparam ClassBackgroundColor #FFFFFF
+skinparam ClassHeaderBackgroundColor #F8F9FA
+skinparam NoteBorderColor #8A94A6
+skinparam NoteBackgroundColor #F8F9FA
+hide circle
 
-' =====================================================
-' ENTIDADES Y ENUMS
-' =====================================================
-package "entity" #EEF6FF {
-
-  enum EstadoVehiculo {
-    DISPONIBLE
-    VENDIDO
-    EN_MANTENIMIENTO
-  }
-
-  enum TipoMantenimiento {
-    PREVENTIVO
-    CORRECTIVO
-  }
-
-  enum EstadoMantenimiento {
-    EN_PROCESO
-    FINALIZADO
-  }
-
-  class Cliente <<Entity>> {
-    - id : Long
-    - cedula : String {unique}
-    - nombre : String
-    - apellido : String
-    - email : String {unique}
-    - telefono : String
-    - direccion : String
-    - fechaRegistro : LocalDateTime
-    - ventas : List<Venta>
-  }
-
-  class Vehiculo <<Entity>> {
-    - id : Long
-    - placa : String {unique}
-    - marca : String
-    - modelo : String
-    - anio : Integer
-    - color : String
-    - precio : BigDecimal
-    - estado : EstadoVehiculo
-    - fechaCreacion : LocalDateTime
-    - mantenimientos : List<Mantenimiento>
-    + estaDisponibleParaVenta() : boolean
-  }
-
-  class Venta <<Entity>> {
-    - id : Long
-    - cliente : Cliente
-    - vehiculo : Vehiculo
-    - fechaVenta : LocalDateTime
-    - precioBase : BigDecimal
-    - porcentajeDescuento : BigDecimal
-    - montoDescuento : BigDecimal
-    - totalPagado : BigDecimal
-    - observaciones : String
-  }
-
-  class Mantenimiento <<Entity>> {
-    - id : Long
-    - vehiculo : Vehiculo
-    - fechaIngreso : LocalDateTime
-    - fechaSalida : LocalDateTime
-    - tipo : TipoMantenimiento
-    - estado : EstadoMantenimiento
-    - costo : BigDecimal
-    - descripcion : String
-  }
-
-  Cliente "1" -- "0..*" Venta : realiza >
-  Vehiculo "1" -- "0..1" Venta : se vende en >
-  Vehiculo "1" -- "0..*" Mantenimiento : recibe >
-  Vehiculo --> EstadoVehiculo
-  Mantenimiento --> TipoMantenimiento
-  Mantenimiento --> EstadoMantenimiento
+class Cliente {
+  - id : Long
+  - cedula : String
+  - nombre : String
+  - apellido : String
+  - email : String
+  - telefono : String
+  - direccion : String
+  - fechaRegistro : LocalDateTime
+  - ventas : List<Venta>
+  --
+  + getNombreCompleto() : String
 }
 
-' =====================================================
-' DTOs
-' =====================================================
-package "dto" #FFF8E7 {
-  package "request" {
-    class ClienteRequestDTO <<record>> {
-      cedula : String
-      nombre : String
-      apellido : String
-      email : String
-      telefono : String
-      direccion : String
-    }
-    class VehiculoRequestDTO <<record>> {
-      placa : String
-      marca : String
-      modelo : String
-      anio : Integer
-      color : String
-      precio : BigDecimal
-    }
-    class VentaRequestDTO <<record>> {
-      clienteId : Long
-      vehiculoId : Long
-      observaciones : String
-    }
-    class MantenimientoRequestDTO <<record>> {
-      vehiculoId : Long
-      tipo : TipoMantenimiento
-      costo : BigDecimal
-      descripcion : String
-    }
-  }
-  package "response" {
-    class ClienteResponseDTO <<record>>
-    class VehiculoResponseDTO <<record>>
-    class VentaResponseDTO <<record>> {
-      precioBaseCop : BigDecimal
-      porcentajeDescuento : BigDecimal
-      descuentoAplicadoCop : BigDecimal
-      totalPagadoCop : BigDecimal
-      totalPagadoUsd : BigDecimal
-    }
-    class MantenimientoResponseDTO <<record>>
-    class ConversionUsdDTO <<record>> {
-      montoCop : BigDecimal
-      tasa : BigDecimal
-      montoUsd : BigDecimal
-      fechaConsulta : LocalDateTime
-    }
-    class ApiErrorResponse <<record>> {
-      timestamp : LocalDateTime
-      status : int
-      error : String
-      message : String
-      path : String
-      validationErrors : Map<String,String>
-    }
-  }
+class Vehiculo {
+  - id : Long
+  - placa : String
+  - marca : String
+  - modelo : String
+  - anio : Integer
+  - color : String
+  - precio : BigDecimal
+  - estado : EstadoVehiculo
+  - fechaCreacion : LocalDateTime
+  - mantenimientos : List<Mantenimiento>
+  - venta : Venta
+  --
+  + estaDisponibleParaVenta() : boolean
+  + marcarComoVendido() : void
+  + enviarAMantenimiento() : void
+  + marcarComoDisponible() : void
 }
 
-' =====================================================
-' REPOSITORIOS
-' =====================================================
-package "repository" #F0FFF4 {
-  interface "JpaRepository<T, ID>" as JpaRepository
-  interface ClienteRepository {
-    + existsByEmail(email) : boolean
-    + existsByCedula(cedula) : boolean
-  }
-  interface VehiculoRepository {
-    + existsByPlaca(placa) : boolean
-    + findByMarcaIgnoreCase(marca) : List<Vehiculo>
-    + findByEstado(estado) : List<Vehiculo>
-  }
-  interface VentaRepository {
-    + findByClienteId(id) : List<Venta>
-  }
-  interface MantenimientoRepository {
-    + findByVehiculoId(id) : List<Mantenimiento>
-  }
-  ClienteRepository --|> JpaRepository
-  VehiculoRepository --|> JpaRepository
-  VentaRepository --|> JpaRepository
-  MantenimientoRepository --|> JpaRepository
+class Venta {
+  - id : Long
+  - cliente : Cliente
+  - vehiculo : Vehiculo
+  - fechaVenta : LocalDateTime
+  - precioBase : BigDecimal
+  - porcentajeDescuento : BigDecimal
+  - montoDescuento : BigDecimal
+  - totalPagado : BigDecimal
+  - observaciones : String
 }
 
-' =====================================================
-' SERVICIOS
-' =====================================================
-package "service" #F7F0FF {
-  interface ClienteService
-  interface VehiculoService
-  interface VentaService {
-    + registrarVenta(VentaRequestDTO) : VentaResponseDTO
-    + listar() : List<VentaResponseDTO>
-    + buscarPorCliente(Long) : List<VentaResponseDTO>
-  }
-  interface MantenimientoService
-  interface CurrencyExchangeService {
-    + convertirCopAUsd(BigDecimal) : ConversionUsdDTO
-  }
-
-  class ClienteServiceImpl
-  class VehiculoServiceImpl
-  class VentaServiceImpl {
-    - UMBRAL_DESCUENTO : BigDecimal = 100000000
-    - PORCENTAJE_DESCUENTO : BigDecimal = 0.05
-    - calcularDescuento(BigDecimal) : BigDecimal
-  }
-  class MantenimientoServiceImpl
-  class CurrencyExchangeServiceImpl {
-    - restClient : RestClient
-  }
-
-  ClienteServiceImpl ..|> ClienteService
-  VehiculoServiceImpl ..|> VehiculoService
-  VentaServiceImpl ..|> VentaService
-  MantenimientoServiceImpl ..|> MantenimientoService
-  CurrencyExchangeServiceImpl ..|> CurrencyExchangeService
+class Mantenimiento {
+  - id : Long
+  - vehiculo : Vehiculo
+  - fechaIngreso : LocalDateTime
+  - fechaSalida : LocalDateTime
+  - tipo : TipoMantenimiento
+  - estado : EstadoMantenimiento
+  - costo : BigDecimal
+  - descripcion : String
+  --
+  + finalizar() : void
 }
 
-' =====================================================
-' CONTROLADORES Y EXCEPCIONES
-' =====================================================
-package "controller" #FFEFEF {
-  class ClienteController <<RestController>>
-  class VehiculoController <<RestController>>
-  class VentaController <<RestController>>
-  class MantenimientoController <<RestController>>
+enum EstadoVehiculo {
+  DISPONIBLE
+  VENDIDO
+  EN_MANTENIMIENTO
+  --
+  + permiteVenta() : boolean
 }
 
-package "exception" #F5F5F5 {
-  class GlobalExceptionHandler <<RestControllerAdvice>>
-  class ResourceNotFoundException
-  class BusinessRuleException
-  class DuplicateResourceException
-  ResourceNotFoundException --|> RuntimeException
-  BusinessRuleException --|> RuntimeException
-  DuplicateResourceException --|> RuntimeException
-}
+Cliente "1" -- "0..*" Venta : realiza >
+Vehiculo "1" -- "0..1" Venta : se vende en >
+Vehiculo "1" -- "0..*" Mantenimiento : registra >
+Vehiculo --> "1" EstadoVehiculo : estado
 
-' --- Dependencias entre capas
-ClienteController --> ClienteService
-VehiculoController --> VehiculoService
-VentaController --> VentaService
-MantenimientoController --> MantenimientoService
-
-ClienteServiceImpl --> ClienteRepository
-VehiculoServiceImpl --> VehiculoRepository
-VehiculoServiceImpl --> CurrencyExchangeService
-VentaServiceImpl --> VentaRepository
-VentaServiceImpl --> ClienteRepository
-VentaServiceImpl --> VehiculoRepository
-VentaServiceImpl --> CurrencyExchangeService
-MantenimientoServiceImpl --> MantenimientoRepository
-MantenimientoServiceImpl --> VehiculoRepository
-
-VentaController ..> VentaRequestDTO
-VentaController ..> VentaResponseDTO
-GlobalExceptionHandler ..> ApiErrorResponse
+note bottom of Venta
+  Si precioBase > 100.000.000 COP:
+  porcentajeDescuento = 5
+  totalPagado = precioBase - montoDescuento
+end note
 
 @enduml
-
